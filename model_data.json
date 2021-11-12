@@ -1,38 +1,59 @@
-{
-    "modellist":[
-        {
-        "location":"models/mmd/るいのれ式物述有栖_配布用フォルダ/物述有栖.pmx",
-        "line_locationx_1":0,
-        "line_locationy_1":0,
-        "line_locationx_2":0,
-        "line_locationy_2":0,
-        "line_locationx_3":0,
-        "line_locationy_3":0,
-        "line_locationx_4":0,
-        "line_locationy_4":0
-        },
-        {
-        "location":"models/mmd/kizunaai/kizunaai.pmx",
-        "line_locationx_1":0,
-        "line_locationy_1":0,
-        "line_locationx_2":0,
-        "line_locationy_2":0,
-        "line_locationx_3":0,
-        "line_locationy_3":0,
-        "line_locationx_4":0,
-        "line_locationy_4":0
-        },
-        {
-        "location":"models/mmd/『天宮こころ(Kokoro Amamiya)』/『天宮こころ(Kokoro Amamiya)』.pmx",
-        "line_locationx_1":0,
-        "line_locationy_1":0,
-        "line_locationx_2":0,
-        "line_locationy_2":0,
-        "line_locationx_3":0,
-        "line_locationy_3":0,
-        "line_locationx_4":0,
-        "line_locationy_4":0
-        }
-    ]
-
-}
+[
+    {
+        "model_name": "models/mmd/kizunaai/kizunaai.pmx",
+        "x1": 0,
+        "y1": 8.011874999999998,
+        "x2": 0.25687499999999996,
+        "y2": 0,
+        "x3": 0,
+        "y3": 8.403124999999998,
+        "x4": 0.724375,
+        "y4": 0,
+        "RXNA": 8.56073546620227,
+        "LXNA": 8.56073546620227,
+        "RXPA": -11.495844768900183,
+        "LXPA": -11.495844768900183,
+        "RYNA": -12.414085561167838,
+        "LYPA": 12.414085561167838,
+        "RYPA": 8.116902097686658,
+        "LYNA": -8.116902097686658
+    },
+    {
+        "model_name": "models/mmd/『天宮こころ(Kokoro Amamiya)』/『天宮こころ(Kokoro Amamiya)』.pmx",
+        "x1": 0,
+        "y1": 5.3393749999999995,
+        "x2": 0.294375,
+        "y2": 0,
+        "x3": 0,
+        "y3": 5.654375,
+        "x4": 0.7581249999999999,
+        "y4": 0,
+        "RXNA": 10.884363664171454,
+        "LXNA": 10.884363664171454,
+        "RXPA": -16.02080494389282,
+        "LXPA": -16.02080494389282,
+        "RYNA": -16.114437988054405,
+        "LYPA": 16.114437988054405,
+        "RYPA": 10.44454314040563,
+        "LYNA": -10.44454314040563
+    },
+    {
+        "model_name": "models/mmd/るいのれ式物述有栖_配布用フォルダ/物述有栖.pmx",
+        "x1": 0,
+        "y1": 4.321875,
+        "x2": 0.314375,
+        "y2": 0,
+        "x3": 0,
+        "y3": 4.741875,
+        "x4": 0.778125,
+        "y4": 0,
+        "RXNA": 14.675546513489598,
+        "LXNA": 14.675546513489598,
+        "RXPA": -16.63228604862155,
+        "LXPA": -16.63228604862155,
+        "RYNA": -21.127818695449108,
+        "LYPA": 21.127818695449108,
+        "RYPA": 9.728345896492103,
+        "LYNA": -9.728345896492103
+    }
+]
