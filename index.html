@@ -178,6 +178,7 @@
 			document.addEventListener( 'mousedown', onClick, false );
     		document.addEventListener( 'contextmenu', onContextMenu, false );
 			window.addEventListener('keydown', function(e){
+				console.log(e.key);
 				switch(e.key) {	
 					case 'a':
 						model.changeMMDModel(-1);
@@ -189,6 +190,7 @@
 							model.getEye().showLine(currentRightEye);
 						}
 						onWindowResize();
+						setEyePosition();
 						break;
 					case 'd':
 						model.changeMMDModel(1);
@@ -200,6 +202,7 @@
 							model.getEye().showLine(currentRightEye);
 						}
 						onWindowResize();
+						setEyePosition();
 						break;
 					case '1':
 						currentScene.index -= 1;
@@ -258,6 +261,7 @@
 						model.saveJson();
 						break;
 					case 'l':
+						console.log('in');
 						let temp = model.getEye().loadLine(
 							(temp) => {
 								json.content = temp;
@@ -273,10 +277,19 @@
 									model.model_data[i]['y3'] = json.content[i].y3;
 									model.model_data[i]['x4'] = json.content[i].x4;
 									model.model_data[i]['y4'] = json.content[i].y4;
-
+									model.model_data[i]['RXNA'] = json.content[i].RXNA;
+									model.model_data[i]['LXNA'] = json.content[i].LXNA;
+									model.model_data[i]['RXPA'] = json.content[i].RXPA;
+									model.model_data[i]['LXPA'] = json.content[i].LXPA;
+									model.model_data[i]['RYNA'] = json.content[i].RYNA;
+									model.model_data[i]['LYPA'] = json.content[i].LYPA;
+									model.model_data[i]['RYPA'] = json.content[i].RYPA;
+									model.model_data[i]['LYNA'] = json.content[i].LYNA;
 								}
+								setEyePosition();
 								model.getEye().drawLine();
 								model.getEye().showLine(currentRightEye);
+								console.log('model data', model.model_data);
 							}
 						);
 						break;
@@ -286,6 +299,24 @@
 				
 			}, false);
 
+		}
+
+		function setEyePosition() {
+			for (let j = 0; j < 8; j++) {
+				let string = '';
+				if (j % 2 == 0) {
+					string = '右目';
+				} else {
+					string = '左目';
+				}
+				let otherBone = model.findBone(model.getClone()[Math.floor(j / 2)], string);
+				if (j < 4) {
+					otherBone.rotation.x = THREE.MathUtils.degToRad(model.getOtherRotation(j));
+				} else {
+					otherBone.rotation.y = THREE.MathUtils.degToRad(model.getOtherRotation(j));
+				}
+				console.log(string, otherBone.rotation);
+			}
 		}
 
 		function changeLeftCamera() {
