@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>three.js webgl - loaders - MMD loader</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<link type="text/css" rel="stylesheet" href="main.css">
+	<style>
+		body {
+			background-color: #fff;
+			color: #444;
+		}
+
+		a {
+			color: #08f;
+		}
+	</style>
+</head>
+
+<body oncontextmenu="return false;">
+	<div id="info"></div>
+
+	<script src="js/libs/ammo.wasm.js"></script>
+	<script src="scoreoutputer.min.js"></script>
+	<script src="https://cdn.bootcss.com/FileSaver.js/2014-11-29/FileSaver.js"></script>
+	<script>
+		// 建構子 ScoreOutputer 接受一個字串，該字串為 csv 的檔案名稱
+		// 以下面範例，檔名就為 "109598105(總分: 6).csv"
+		var so = new ScoreOutputer("110598050");
+		so.installCSS(function () {
+			// 安裝 bootstrap 的 css，如果在 html 上方引用 bootstrap 5.1.1 的話就不用使用 installCSS ，注意一定要 bootstrap css 5.1.1 版
+			// installCSS 接收一個 callback 當作參數，作為成功安裝 bootstrap css 的回呼函式
+
+			//加入項目，分數，完成狀況
+			//第一個參數為 項目名稱
+			//第2個參數為 項目分數
+			//第3個參數為 完成狀況，有完成 true/未完成 false
+			//有幾個項目就呼叫幾個 addChild
+			//addChild 要比 renderModal 先呼叫
+			so.addChild("繪製出 5 個畫面", 1, true);
+			so.addChild("回答問題", 1, true);
+			so.addChild("可按鍵選擇上 / 下一隻角色", 1, true);
+			so.addChild("讀取作業 2 儲存的座標點在眼睛上繪製出分割線", 1, true);
+			so.addChild("可選擇當下控制哪個虹膜", 1, true);
+			so.addChild("按滑鼠左鍵控制虹膜移動，右鍵停止", 2, true);
+			so.addChild("複製參數至對應目標參數", 2, true);
+			so.addChild("可儲存虹膜轉動角度", 1, true);
+
+			//產生自評表，參數如下所示
+			so.renderModal(
+				//1. 自評表插入位置 (預設 document.body)
+				document.body,
+				//2. 自評表背景 (預設紅色)
+				'rgba(100,45,58,1)',
+				//3. 自評表文字顏色 (預設白色)
+				'white',
+				//4. 自評表文字大小 (預設 14pt)
+				'15pt',
+				//5. 自評表 checkbox 文字大小 (預設多少忘了)
+				'15px',
+				//6. 自評表標題 (預設 "自我評分表")
+				dialogTitle = "自我評分表"
+			);
+
+			//設定下載按鈕 <-- 一定要呼叫這個函數，不然沒有下載功能
+			so.installDownloadBtn();
+
+			//產生 "開啟自評表按鈕"
+			so.renderBtn(
+				//自評表按鈕插入位置
+				document.querySelector("#info"),
+				//自評表按鈕文字
+				"開啟自評表"
+			);
+		});
+	</script>
+	<script type="module">
+
+		import * as THREE from './build/three.module.js';
+		import { ModelLoader } from './ModelLoader.js';
+		
+		import { OrbitControls } from './jsm/controls/OrbitControls.js';
+		import { OutlineEffect } from './jsm/effects/OutlineEffect.js';
+
+		let renderer, effect;
+		let mesh, helper;
+		let bone, windowReset = false;
+		let SCREEN_WIDTH = window.innerWidth;
+		let SCREEN_HEIGHT = window.innerHeight;
+		let aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
+		let frustumSize = 30;
+		let scene = new Array(4);
+		let camera = new Array(4);
+		let camera1;
+		let currentScene = {index:0};
+		let currentRightEye = true;
+		const raycaster = new THREE.Raycaster();
+		const mouse = new THREE.Vector2();
+		var plane = new THREE.Plane( new THREE.Vector3( 0, 0, 1 ), 0 );
+		var model = null;
+		let mousePosition = {};
+		let allModelEyeRotation = {};
+		let rotation = {};
+		let json = {};
+
+		Ammo().then(function (AmmoLib) {
+
+			Ammo = AmmoLib;
+
+			init();
+			animate();
+
+		});
+
+		
+
+		function init() {
+
+			const container = document.createElement('div');
+			document.body.appendChild(container);
+
+			camera1 = new THREE.OrthographicCamera(0.5 * frustumSize * aspect / - 2, 0.5 * frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, 0.1, 1000);
+			camera1.position.z = 30;
+
+			for (let i = 0; i < 4; i++) {
+				camera[i] = new THREE.OrthographicCamera(0.25 * frustumSize * aspect / - 2, 0.25 * frustumSize * aspect / 2, 0.5 * frustumSize / 2, 0.5 * frustumSize / - 2, 0.1, 1000);
+				camera[i].position.z = 30;
+			}
+			let scale = 30;
+
+			// scene
+
+			for (let i = 0; i < 4; i++) {
+				
+				scene[i] = new THREE.Scene();
+				const ambient = new THREE.AmbientLight(0x666666);
+				scene[i].add(ambient);
+
+				const directionalLight = new THREE.DirectionalLight(0x887766);
+				directionalLight.position.set(- 1, 1, 1).normalize();
+				scene[i].add(directionalLight);
+
+			}
+
+			// scene5 = new THREE.Scene();
+			// const ambient5 = new THREE.AmbientLight(0x666666);
+			// scene5.add(ambient5);
+
+			// const directionalLight5 = new THREE.DirectionalLight(0x887766);
+			// directionalLight5.position.set(- 1, 1, 1).normalize();
+			// scene5.add(directionalLight5);
+			
+			//
+
+			renderer = new THREE.WebGLRenderer({ antialias: true });
+			renderer.setPixelRatio(window.devicePixelRatio);
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			container.appendChild(renderer.domElement);
+			renderer.autoClear = false;
+			effect = new OutlineEffect(renderer);
+
+			// model
+
+			if (model == null) {
+
+				model = new ModelLoader(scene, currentScene, mouse, plane, json);
+				model.loadModel((windowResize) => {
+
+					onWindowResize();
+				});
+				model.loadVpd();
+				
+			}
+
+			window.addEventListener('resize', onWindowResize, false);
+			document.addEventListener( 'mousemove', onMouseMove, false );
+			document.addEventListener( 'mousedown', onClick, false );
+    		document.addEventListener( 'contextmenu', onContextMenu, false );
+			window.addEventListener('keydown', function(e){
+				switch(e.key) {	
+					case 'a':
+						model.changeMMDModel(-1);
+						currentScene.index = 0;
+						currentRightEye = true;
+						if (json.content != null) {
+
+							model.getEye().drawLine();
+							model.getEye().showLine(currentRightEye);
+						}
+						onWindowResize();
+						break;
+					case 'd':
+						model.changeMMDModel(1);
+						currentScene.index = 0;
+						currentRightEye = true;
+						if (json.content != null) {
+
+							model.getEye().drawLine();
+							model.getEye().showLine(currentRightEye);
+						}
+						onWindowResize();
+						break;
+					case '1':
+						currentScene.index -= 1;
+						if (currentScene.index < 0) {
+							currentScene.index = 7;
+						}
+						currentScene.index = currentScene.index % 8;
+						if (currentRightEye) {
+							currentRightEye = false;
+						} else {
+							currentRightEye = true;
+						}
+
+						changeLeftCamera();
+						model.getEye().changeEyeLine(currentRightEye);
+						break;
+					case '2':
+						currentScene.index += 1;
+						currentScene.index = currentScene.index % 8;
+						if (currentRightEye) {
+							currentRightEye = false;
+						} else {
+							currentRightEye = true;
+						}
+
+						changeLeftCamera();
+						model.getEye().changeEyeLine(currentRightEye);
+						break;
+					case 'q':
+						model.setOtherRotation(rotation);
+						let tempScene;
+						switch(currentScene.index){
+							case 0:
+								tempScene = 1;
+								break;
+							case 2:
+								tempScene = 3;
+								break;
+							case 4:
+								tempScene = 7;
+								break;
+							case 6:
+								tempScene = 5;
+								break;
+						}
+						let otherBone = model.findBone(model.getClone()[Math.floor(tempScene / 2)], '左目');
+						if (tempScene == 1 || tempScene == 3) {
+							otherBone.rotation.x = THREE.MathUtils.degToRad(model.getOtherRotation(tempScene));
+						} else if (tempScene == 5 || tempScene == 7) {
+							otherBone.rotation.y = THREE.MathUtils.degToRad(model.getOtherRotation(tempScene));
+						}
+
+						// console.log('model_data', model.model_data);
+						break;
+					case 's':
+						model.saveJson();
+						break;
+					case 'l':
+						let temp = model.getEye().loadLine(
+							(temp) => {
+								json.content = temp;
+								console.log('json', json.content);
+								console.log(model.model_data);
+								for (let i = 0; i < 3; i ++) {
+									console.log(json.content[i]);
+									model.model_data[i]['x1'] = json.content[i].x1;
+									model.model_data[i]['y1'] = json.content[i].y1;
+									model.model_data[i]['x2'] = json.content[i].x2;
+									model.model_data[i]['y2'] = json.content[i].y2;
+									model.model_data[i]['x3'] = json.content[i].x3;
+									model.model_data[i]['y3'] = json.content[i].y3;
+									model.model_data[i]['x4'] = json.content[i].x4;
+									model.model_data[i]['y4'] = json.content[i].y4;
+
+								}
+								model.getEye().drawLine();
+								model.getEye().showLine(currentRightEye);
+							}
+						);
+						break;
+					default:
+						break;
+				}
+				
+			}, false);
+
+		}
+
+		function changeLeftCamera() {
+
+
+			let frustumSize = 1200;
+
+			if (currentRightEye) {
+				bone = model.findBone(model.getClone()[Math.floor(currentScene.index / 2)], '右目');
+			} else {
+				bone = model.findBone(model.getClone()[Math.floor(currentScene.index / 2)], '左目');
+			}
+
+			let offset = bone.children[0].getWorldPosition(new THREE.Vector3());
+			camera1.left = 0.5 * SCREEN_WIDTH / frustumSize / - 2 + offset.x;
+			camera1.right = 0.5 * SCREEN_WIDTH / frustumSize / 2 + offset.x;
+			camera1.top = SCREEN_HEIGHT / frustumSize / 2 + offset.y;
+			camera1.bottom = - SCREEN_HEIGHT / frustumSize / 2 + offset.y;
+			camera1.updateProjectionMatrix();
+
+		}
+
+		function onWindowResizeForEye() {
+
+			if (windowReset) {
+
+				windowReset = false;
+				onWindowResize();
+
+			} else {
+
+				windowReset = true;
+
+				changeLeftCamera();
+
+				let offset = model.getCurrentOffset();
+				let frustumSize = 300;
+
+				for (let i = 0; i < 4; i++) {
+					camera[i].left = 0.25 * SCREEN_WIDTH / frustumSize / - 2;
+					camera[i].right = 0.25 * SCREEN_WIDTH / frustumSize / 2;
+					camera[i].top = 0.5 * SCREEN_HEIGHT / frustumSize / 2 + offset.y;
+					camera[i].bottom = - 0.5 * SCREEN_HEIGHT / frustumSize / 2 + offset.y;
+					camera[i].updateProjectionMatrix();	
+				}
+
+			}
+
+		}
+
+		function onWindowResize() {
+			model.addClone();
+			windowReset = false;
+			SCREEN_WIDTH = window.innerWidth;
+			SCREEN_HEIGHT = window.innerHeight;
+			aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
+
+			effect.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+
+			changeLeftCamera();
+
+			let offset = model.getCurrentOffset();
+			let frustumSize = 300;
+
+			for (let i = 0; i < 4; i++) {
+				camera[i].left = 0.25 * SCREEN_WIDTH / frustumSize / - 2;
+				camera[i].right = 0.25 * SCREEN_WIDTH / frustumSize / 2;
+				camera[i].top = 0.5 * SCREEN_HEIGHT / frustumSize / 2 + offset.y;
+				camera[i].bottom = - 0.5 * SCREEN_HEIGHT / frustumSize / 2 + offset.y;
+				camera[i].updateProjectionMatrix();	
+			}
+		}
+
+		//
+
+		function onClick( event ) {
+
+			mousePosition.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+			mousePosition.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+			model.isMoveEye = true;
+
+		}
+
+		function onContextMenu( event ) {
+
+			model.isMoveEye = false;
+			rotation.x = bone.rotation.x;
+			rotation.y = bone.rotation.y;
+			model.setOtherRotation(rotation);
+
+		}
+
+		function onMouseMove( event ) {
+
+			mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+			mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+			if (model.isMoveEye) {
+				let tempX = mouse.y - mousePosition.y;
+				let tempY = mouse.x - mousePosition.x;
+				bone.rotation.x = - tempX;
+				bone.rotation.y = tempY;
+
+			}
+			// raycaster.setFromCamera( mouse, camera1 );
+			// raycaster.setFromCamera( mouse, camera[0] );
+			// raycaster.setFromCamera( mouse, camera[1] );
+			// raycaster.setFromCamera( mouse, camera[2] );
+			// raycaster.setFromCamera( mouse, camera[3] );
+
+		}
+
+		function animate() {
+			
+			
+			requestAnimationFrame(animate);
+			render();
+
+		}
+
+		function render() {
+
+			effect.clear();
+			effect.setViewport(0, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT);
+			effect.render(scene[Math.floor(currentScene.index / 2)], camera1);
+
+			effect.setViewport(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2);
+			effect.render(scene[0], camera[0]);
+
+			effect.setViewport(SCREEN_WIDTH / 2 + SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2, SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2);
+			effect.render(scene[1], camera[1]);
+
+			effect.setViewport(SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2);
+			effect.render(scene[2], camera[2]);
+
+			effect.setViewport(SCREEN_WIDTH / 2 + SCREEN_WIDTH / 4, 0, SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2);
+			effect.render(scene[3], camera[3]);
+		}
+	</script>
+
+</body>
+
+</html>
